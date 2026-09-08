@@ -1,0 +1,13 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      APP_DB_PATH: /app/data/finance.db
+      APP_SEED_DEMO: "true"
+    volumes:
+      - finance_data:/app/data
+
+volumes:
+  finance_data:

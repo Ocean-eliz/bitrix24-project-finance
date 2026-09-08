@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Project Finance — Битрикс24</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">₽</div>
+        <div>
+          <strong>Project Finance</strong>
+          <span>для Битрикс24</span>
+        </div>
+      </div>
+      <nav>
+        <button class="nav-item active" data-view="projects">▦ <span>Проекты</span></button>
+        <button class="nav-item" data-view="categories">≡ <span>Статьи</span></button>
+      </nav>
+      <div class="sidebar-note">
+        <span class="dot"></span>
+        <span id="integrationStatus">Определяем режим…</span>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <h1 id="pageTitle">Экономика проектов</h1>
+          <p id="pageSubtitle">Доходы, расходы и рентабельность в одном месте</p>
+        </div>
+        <div class="topbar-actions">
+          <div class="user-pill" id="userPill">Демо-пользователь</div>
+          <button class="btn primary" id="newProjectBtn">+ Новый проект</button>
+        </div>
+      </header>
+
+      <section id="projectsView">
+        <div class="summary-grid" id="portfolioSummary"></div>
+        <div class="section-head">
+          <div>
+            <h2>Проекты</h2>
+            <p>Выберите проект, чтобы посмотреть операции и команду</p>
+          </div>
+        </div>
+        <div class="project-grid" id="projectGrid"></div>
+        <div class="empty-state hidden" id="projectsEmpty">
+          <div class="empty-icon">₽</div>
+          <h3>Пока нет проектов</h3>
+          <p>Создайте первый проект и начните учитывать доходы и расходы.</p>
+          <button class="btn primary" data-action="open-project-modal">Создать проект</button>
+        </div>
+        <section class="project-detail hidden" id="projectDetail"></section>
+      </section>
+
+      <section id="categoriesView" class="hidden">
+        <div class="categories-toolbar">
+          <div>
+            <h2>Статьи доходов и расходов</h2>
+            <p>Системные статьи заданы по условию тестового. Новые можно добавлять вручную.</p>
+          </div>
+          <button class="btn primary" id="newCategoryBtn">+ Добавить статью</button>
+        </div>
+        <div class="category-columns" id="categoryColumns"></div>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal-backdrop hidden" id="projectModal">
+    <div class="modal">
+      <button class="modal-close" data-close="projectModal">×</button>
+      <h3>Новый проект</h3>
+      <form id="projectForm">
+        <label>Название проекта<input name="name" required minlength="2" placeholder="Например, Внедрение портала" /></label>
+        <label>Описание<textarea name="description" rows="3" placeholder="Кратко о проекте"></textarea></label>
+        <label>Сотрудники<select name="employee_ids" id="projectEmployeeSelect" multiple size="4"></select></label>
+        <small class="hint">Можно выбрать нескольких сотрудников с Ctrl/Cmd.</small>
+        <div class="modal-actions"><button class="btn ghost" type="button" data-close="projectModal">Отмена</button><button class="btn primary" type="submit">Создать</button></div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-backdrop hidden" id="categoryModal">
+    <div class="modal compact">
+      <button class="modal-close" data-close="categoryModal">×</button>
+      <h3>Новая статья</h3>
+      <form id="categoryForm">
+        <label>Тип<select name="kind"><option value="income">Доход</option><option value="expense">Расход</option></select></label>
+        <label>Название<input name="name" required minlength="2" placeholder="Например, Лицензии" /></label>
+        <div class="modal-actions"><button class="btn ghost" type="button" data-close="categoryModal">Отмена</button><button class="btn primary" type="submit">Добавить</button></div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-backdrop hidden" id="transactionModal">
+    <div class="modal">
+      <button class="modal-close" data-close="transactionModal">×</button>
+      <h3>Новая операция</h3>
+      <form id="transactionForm">
+        <input type="hidden" name="project_id" />
+        <label>Статья<select name="category_id" id="transactionCategory" required></select></label>
+        <label>Сумма, ₽<input name="amount" inputmode="decimal" required placeholder="0,00" /></label>
+        <label>Дата<input name="operation_date" type="date" required /></label>
+        <label>Комментарий<input name="comment" placeholder="Необязательно" /></label>
+        <div class="modal-actions"><button class="btn ghost" type="button" data-close="transactionModal">Отмена</button><button class="btn primary" type="submit">Сохранить</button></div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-backdrop hidden" id="employeeModal">
+    <div class="modal compact">
+      <button class="modal-close" data-close="employeeModal">×</button>
+      <h3>Добавить сотрудника</h3>
+      <form id="employeeForm">
+        <input type="hidden" name="project_id" />
+        <label>Сотрудник<select name="employee_id" id="employeeSelect" required></select></label>
+        <div class="modal-actions"><button class="btn ghost" type="button" data-close="employeeModal">Отмена</button><button class="btn primary" type="submit">Добавить</button></div>
+      </form>
+    </div>
+  </div>
+
+  <div class="toast hidden" id="toast"></div>
+
+  <script src="https://api.bitrix24.com/api/v1/"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>
