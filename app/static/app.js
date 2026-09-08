@@ -42,6 +42,13 @@ async function initBitrix() {
     const timeout = setTimeout(() => finish(false), 1400);
     try {
       BX24.init(() => {
+        BX24.callMethod('app.info', {}, (appInfo) => {
+          if (!appInfo.error() && appInfo.data().INSTALLED === false) {
+            BX24.installFinish();
+          }
+        });
+
+        BX24.callMethod('user.current', {}, async (result) => {
         BX24.callMethod('user.current', {}, async (result) => {
           clearTimeout(timeout);
           if (result.error()) return finish(false);
