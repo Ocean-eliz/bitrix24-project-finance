@@ -131,7 +131,7 @@ def project_payload(conn, project_row) -> dict:
     }
 
 
-@app.get("/")
+@app.api_route("/", methods=["GET", "POST"])
 def index():
     return FileResponse(STATIC_DIR / "index.html")
 
