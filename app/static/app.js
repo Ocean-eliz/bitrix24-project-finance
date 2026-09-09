@@ -41,6 +41,31 @@ const esc = (value = '') =>
     '"': '&quot;',
   })[c]);
 
+function isTestEmployee(employee) {
+  if (!employee) {
+    return false;
+  }
+
+  const email = String(employee.email || '').toLowerCase();
+  const externalId = String(employee.external_id || '').toLowerCase();
+
+  return (
+    email.endsWith('@example.com') ||
+    externalId.startsWith('demo') ||
+    externalId.startsWith('test')
+  );
+}
+
+function displayEmployeeName(employee) {
+  const name = employee?.name || 'Сотрудник';
+
+  if (isTestEmployee(employee)) {
+    return `${name} (Тестовый пользователь)`;
+  }
+
+  return name;
+}
+
 async function api(url, options = {}) {
   const headers = {
     'Content-Type': 'application/json',
@@ -157,7 +182,8 @@ async function initBitrix() {
             const integrationStatus = el('integrationStatus');
 
             if (userPill) {
-              userPill.textContent = state.currentEmployee.name;
+              userPill.textContent =
+                displayEmployeeName(state.currentEmployee);
             }
 
             if (integrationStatus) {
@@ -169,7 +195,10 @@ async function initBitrix() {
               BX24.fitWindow();
             } catch (_) {}
           } catch (error) {
-            console.error('Ошибка синхронизации пользователя:', error);
+            console.error(
+              'Ошибка синхронизации пользователя:',
+              error,
+            );
           }
 
           finish(true);
@@ -205,7 +234,8 @@ async function syncBitrixUsers() {
                     name:
                       [user.NAME, user.LAST_NAME]
                         .filter(Boolean)
-                        .join(' ') || `Пользователь ${user.ID}`,
+                        .join(' ') ||
+                      `Пользователь ${user.ID}`,
                     email: user.EMAIL || null,
                   }),
                 });
@@ -318,16 +348,19 @@ function renderProjects() {
 
       const avatars = project.employees
         .slice(0, 4)
-        .map(
-          (employee) => `
+        .map((employee) => {
+          const shownName =
+            displayEmployeeName(employee);
+
+          return `
             <div
               class="avatar"
-              title="${esc(employee.name)}"
+              title="${esc(shownName)}"
             >
               ${esc(initials(employee.name))}
             </div>
-          `,
-        )
+          `;
+        })
         .join('');
 
       return `
@@ -356,6 +389,7 @@ function renderProjects() {
           <div class="project-kpis">
             <div class="project-kpi">
               <span>Прибыль</span>
+
               <strong>
                 ${fmtMoney(metrics.profit_cents)}
               </strong>
@@ -363,6 +397,7 @@ function renderProjects() {
 
             <div class="project-kpi">
               <span>Рентабельность</span>
+
               <strong>
                 ${fmtPercent(
                   metrics.profitability_percent,
@@ -415,6 +450,7 @@ async function openProject(projectId) {
     <div class="detail-head">
       <div>
         <h2>${esc(project.name)}</h2>
+
         <p>
           ${esc(
             project.description || 'Без описания',
@@ -489,7 +525,7 @@ async function openProject(projectId) {
                 <th>Статья</th>
                 <th>Комментарий</th>
                 <th>Сумма</th>
-                <th>Действия</th>
+                <th></th>
               </tr>
             </thead>
 
@@ -541,13 +577,14 @@ async function openProject(projectId) {
 
                             <td>
                               <button
-                                class="row-delete"
+                                class="remove-person"
                                 data-delete-transaction="${
                                   transaction.id
                                 }"
                                 title="Удалить операцию"
+                                aria-label="Удалить операцию"
                               >
-                                Удалить
+                                ×
                               </button>
                             </td>
                           </tr>
@@ -586,8 +623,11 @@ async function openProject(projectId) {
           ${
             project.employees.length
               ? project.employees
-                  .map(
-                    (employee) => `
+                  .map((employee) => {
+                    const shownName =
+                      displayEmployeeName(employee);
+
+                    return `
                       <div class="team-person">
                         <div class="team-avatar">
                           ${esc(
@@ -597,7 +637,7 @@ async function openProject(projectId) {
 
                         <div class="team-meta">
                           <strong>
-                            ${esc(employee.name)}
+                            ${esc(shownName)}
                           </strong>
 
                           <span>
@@ -614,12 +654,13 @@ async function openProject(projectId) {
                             employee.id
                           }"
                           title="Убрать из проекта"
+                          aria-label="Убрать из проекта"
                         >
                           ×
                         </button>
                       </div>
-                    `,
-                  )
+                    `;
+                  })
                   .join('')
               : `
                 <div class="empty-row">
@@ -730,24 +771,44 @@ function renderCategories() {
                     (category) => `
                       <div class="category-row">
                         <span>
-                          ${esc(
-                            category.name,
-                          )}
+                          ${esc(category.name)}
                         </span>
 
-                        <span
-                          class="badge ${
-                            category.is_system
-                              ? ''
-                              : 'custom'
-                          }"
-                        >
+                        <div style="display:flex; align-items:center; gap:10px;">
+                          <span
+                            class="badge ${
+                              category.is_system
+                                ? ''
+                                : 'custom'
+                            }"
+                          >
+                            ${
+                              category.is_system
+                                ? 'системная'
+                                : 'пользовательская'
+                            }
+                          </span>
+
                           ${
                             category.is_system
-                              ? 'системная'
-                              : 'пользовательская'
+                              ? ''
+                              : `
+                                <button
+                                  class="remove-person"
+                                  data-delete-category="${
+                                    category.id
+                                  }"
+                                  data-category-name="${esc(
+                                    category.name,
+                                  )}"
+                                  title="Удалить статью"
+                                  aria-label="Удалить статью"
+                                >
+                                  ×
+                                </button>
+                              `
                           }
-                        </span>
+                        </div>
                       </div>
                     `,
                   )
@@ -758,6 +819,21 @@ function renderCategories() {
         },
       )
       .join('');
+
+  document
+    .querySelectorAll(
+      '[data-delete-category]',
+    )
+    .forEach((button) => {
+      button.onclick = () => {
+        deleteCategory(
+          Number(
+            button.dataset.deleteCategory,
+          ),
+          button.dataset.categoryName,
+        );
+      };
+    });
 }
 
 function fillEmployeeSelects() {
@@ -770,10 +846,13 @@ function fillEmployeeSelects() {
 
   select.innerHTML =
     state.employees
-      .map(
-        (employee) => `
+      .map((employee) => {
+        const shownName =
+          displayEmployeeName(employee);
+
+        return `
           <option value="${employee.id}">
-            ${esc(employee.name)}
+            ${esc(shownName)}
             ${
               employee.email
                 ? ` — ${esc(
@@ -782,8 +861,8 @@ function fillEmployeeSelects() {
                 : ''
             }
           </option>
-        `,
-      )
+        `;
+      })
       .join('');
 }
 
@@ -863,13 +942,16 @@ function openEmployeeModal(
   el('employeeSelect').innerHTML =
     available.length
       ? available
-          .map(
-            (employee) => `
+          .map((employee) => {
+            const shownName =
+              displayEmployeeName(employee);
+
+            return `
               <option value="${employee.id}">
-                ${esc(employee.name)}
+                ${esc(shownName)}
               </option>
-            `,
-          )
+            `;
+          })
           .join('')
       : `
         <option disabled>
@@ -909,6 +991,34 @@ async function deleteTransaction(
     await openProject(projectId);
 
     toast('Операция удалена');
+  } catch (error) {
+    toast(error.message, true);
+  }
+}
+
+async function deleteCategory(
+  categoryId,
+  categoryName,
+) {
+  if (
+    !confirm(
+      `Удалить статью «${categoryName}»?`,
+    )
+  ) {
+    return;
+  }
+
+  try {
+    await api(
+      `/api/categories/${categoryId}`,
+      {
+        method: 'DELETE',
+      },
+    );
+
+    await refreshData();
+
+    toast('Статья удалена');
   } catch (error) {
     toast(error.message, true);
   }
