@@ -19,9 +19,7 @@ const fmtMoney = (cents) =>
 const fmtPercent = (value) =>
   value == null
     ? '—'
-    : `${new Intl.NumberFormat('ru-RU', {
-        maximumFractionDigits: 2,
-      }).format(value)}%`;
+    : `${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(value)}%`;
 
 const initials = (name = '?') =>
   name
@@ -42,28 +40,27 @@ const esc = (value = '') =>
   })[c]);
 
 function isTestEmployee(employee) {
-  if (!employee) {
-    return false;
-  }
+  if (!employee) return false;
 
   const email = String(employee.email || '').toLowerCase();
   const externalId = String(employee.external_id || '').toLowerCase();
+  const name = String(employee.name || '').toLowerCase();
 
   return (
     email.endsWith('@example.com') ||
     externalId.startsWith('demo') ||
-    externalId.startsWith('test')
+    externalId.startsWith('test') ||
+    name === 'анна петрова' ||
+    name === 'иван смирнов'
   );
 }
 
 function displayEmployeeName(employee) {
   const name = employee?.name || 'Сотрудник';
 
-  if (isTestEmployee(employee)) {
-    return `${name} (Тестовый пользователь)`;
-  }
-
-  return name;
+  return isTestEmployee(employee)
+    ? `${name} (Тестовый пользователь)`
+    : name;
 }
 
 async function api(url, options = {}) {
@@ -178,16 +175,13 @@ async function initBitrix() {
               }),
             });
 
-            const userPill = el('userPill');
-            const integrationStatus = el('integrationStatus');
-
-            if (userPill) {
-              userPill.textContent =
+            if (el('userPill')) {
+              el('userPill').textContent =
                 displayEmployeeName(state.currentEmployee);
             }
 
-            if (integrationStatus) {
-              integrationStatus.textContent =
+            if (el('integrationStatus')) {
+              el('integrationStatus').textContent =
                 'Работаем внутри Битрикс24';
             }
 
@@ -223,9 +217,7 @@ async function syncBitrixUsers() {
         { ACTIVE: true },
         async (result) => {
           if (!result.error()) {
-            const users = result.data().slice(0, 50);
-
-            for (const user of users) {
+            for (const user of result.data().slice(0, 50)) {
               try {
                 await api('/api/employees/sync', {
                   method: 'POST',
@@ -266,6 +258,15 @@ async function refreshData() {
   renderProjects();
   renderCategories();
   fillEmployeeSelects();
+}
+
+function metricCard(label, value, cls) {
+  return `
+    <div class="metric-card ${cls}">
+      <span class="metric-label">${label}</span>
+      <strong class="metric-value">${value}</strong>
+    </div>
+  `;
 }
 
 function renderPortfolio() {
@@ -314,15 +315,6 @@ function renderPortfolio() {
       fmtPercent(profitability),
       '',
     )}
-  `;
-}
-
-function metricCard(label, value, cls) {
-  return `
-    <div class="metric-card ${cls}">
-      <span class="metric-label">${label}</span>
-      <strong class="metric-value">${value}</strong>
-    </div>
   `;
 }
 
@@ -774,7 +766,13 @@ function renderCategories() {
                           ${esc(category.name)}
                         </span>
 
-                        <div style="display:flex; align-items:center; gap:10px;">
+                        <div
+                          style="
+                            display:flex;
+                            align-items:center;
+                            gap:10px;
+                          "
+                        >
                           <span
                             class="badge ${
                               category.is_system
@@ -798,9 +796,6 @@ function renderCategories() {
                                   data-delete-category="${
                                     category.id
                                   }"
-                                  data-category-name="${esc(
-                                    category.name,
-                                  )}"
                                   title="Удалить статью"
                                   aria-label="Удалить статью"
                                 >
@@ -830,7 +825,6 @@ function renderCategories() {
           Number(
             button.dataset.deleteCategory,
           ),
-          button.dataset.categoryName,
         );
       };
     });
@@ -998,11 +992,32 @@ async function deleteTransaction(
 
 async function deleteCategory(
   categoryId,
-  categoryName,
 ) {
+  const category =
+    state.categories.find(
+      (item) =>
+        item.id === categoryId,
+    );
+
+  if (!category) {
+    toast(
+      'Статья не найдена',
+      true,
+    );
+    return;
+  }
+
+  if (category.is_system) {
+    toast(
+      'Системную статью удалить нельзя',
+      true,
+    );
+    return;
+  }
+
   if (
     !confirm(
-      `Удалить статью «${categoryName}»?`,
+      `Удалить статью «${category.name}»?`,
     )
   ) {
     return;
