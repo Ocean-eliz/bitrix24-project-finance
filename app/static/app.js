@@ -13,14 +13,14 @@ const fmtMoney = (cents) =>
   new Intl.NumberFormat('ru-RU', {
     style: 'currency',
     currency: 'RUB',
-    maximumFractionDigits: 2
+    maximumFractionDigits: 2,
   }).format(cents / 100);
 
 const fmtPercent = (value) =>
   value == null
     ? '—'
     : `${new Intl.NumberFormat('ru-RU', {
-        maximumFractionDigits: 2
+        maximumFractionDigits: 2,
       }).format(value)}%`;
 
 const initials = (name = '?') =>
@@ -38,13 +38,13 @@ const esc = (value = '') =>
     '<': '&lt;',
     '>': '&gt;',
     "'": '&#39;',
-    '"': '&quot;'
+    '"': '&quot;',
   })[c]);
 
 async function api(url, options = {}) {
   const headers = {
     'Content-Type': 'application/json',
-    ...(options.headers || {})
+    ...(options.headers || {}),
   };
 
   if (state.currentEmployee?.id) {
@@ -53,7 +53,7 @@ async function api(url, options = {}) {
 
   const response = await fetch(url, {
     ...options,
-    headers
+    headers,
   });
 
   if (!response.ok) {
@@ -67,7 +67,7 @@ async function api(url, options = {}) {
     throw new Error(
       Array.isArray(message)
         ? message.map((x) => x.msg).join(', ')
-        : message
+        : message,
     );
   }
 
@@ -80,6 +80,11 @@ async function api(url, options = {}) {
 
 function toast(message, error = false) {
   const node = el('toast');
+
+  if (!node) {
+    console.log(message);
+    return;
+  }
 
   node.textContent = message;
   node.classList.toggle('error', error);
@@ -144,20 +149,28 @@ async function initBitrix() {
                   [user.NAME, user.LAST_NAME]
                     .filter(Boolean)
                     .join(' ') || `Пользователь ${user.ID}`,
-                email: user.EMAIL || null
-              })
+                email: user.EMAIL || null,
+              }),
             });
 
-            el('userPill').textContent =
-              state.currentEmployee.name;
+            const userPill = el('userPill');
+            const integrationStatus = el('integrationStatus');
 
-            el('integrationStatus').textContent =
-              'Работаем внутри Битрикс24';
+            if (userPill) {
+              userPill.textContent = state.currentEmployee.name;
+            }
+
+            if (integrationStatus) {
+              integrationStatus.textContent =
+                'Работаем внутри Битрикс24';
+            }
 
             try {
               BX24.fitWindow();
             } catch (_) {}
-          } catch (_) {}
+          } catch (error) {
+            console.error('Ошибка синхронизации пользователя:', error);
+          }
 
           finish(true);
         });
@@ -181,7 +194,9 @@ async function syncBitrixUsers() {
         { ACTIVE: true },
         async (result) => {
           if (!result.error()) {
-            for (const user of result.data().slice(0, 50)) {
+            const users = result.data().slice(0, 50);
+
+            for (const user of users) {
               try {
                 await api('/api/employees/sync', {
                   method: 'POST',
@@ -190,17 +205,16 @@ async function syncBitrixUsers() {
                     name:
                       [user.NAME, user.LAST_NAME]
                         .filter(Boolean)
-                        .join(' ') ||
-                      `Пользователь ${user.ID}`,
-                    email: user.EMAIL || null
-                  })
+                        .join(' ') || `Пользователь ${user.ID}`,
+                    email: user.EMAIL || null,
+                  }),
                 });
               } catch (_) {}
             }
           }
 
           resolve();
-        }
+        },
       );
     } catch (_) {
       resolve();
@@ -212,11 +226,11 @@ async function refreshData() {
   [
     state.projects,
     state.categories,
-    state.employees
+    state.employees,
   ] = await Promise.all([
     api('/api/projects'),
     api('/api/categories'),
-    api('/api/employees')
+    api('/api/employees'),
   ]);
 
   renderProjects();
@@ -233,8 +247,8 @@ function renderPortfolio() {
     },
     {
       income: 0,
-      expense: 0
-    }
+      expense: 0,
+    },
   );
 
   const profit = total.income - total.expense;
@@ -243,32 +257,32 @@ function renderPortfolio() {
     total.expense === 0
       ? null
       : Math.round(
-          (profit / total.expense * 100) * 100
+          (profit / total.expense) * 100 * 100,
         ) / 100;
 
   el('portfolioSummary').innerHTML = `
     ${metricCard(
       'Доходы',
       fmtMoney(total.income),
-      'income'
+      'income',
     )}
 
     ${metricCard(
       'Расходы',
       fmtMoney(total.expense),
-      'expense'
+      'expense',
     )}
 
     ${metricCard(
       'Прибыль',
       fmtMoney(profit),
-      `profit ${profit < 0 ? 'negative' : ''}`
+      `profit ${profit < 0 ? 'negative' : ''}`,
     )}
 
     ${metricCard(
       'Рентабельность',
       fmtPercent(profitability),
-      ''
+      '',
     )}
   `;
 }
@@ -276,13 +290,8 @@ function renderPortfolio() {
 function metricCard(label, value, cls) {
   return `
     <div class="metric-card ${cls}">
-      <span class="metric-label">
-        ${label}
-      </span>
-
-      <strong class="metric-value">
-        ${value}
-      </strong>
+      <span class="metric-label">${label}</span>
+      <strong class="metric-value">${value}</strong>
     </div>
   `;
 }
@@ -291,15 +300,16 @@ function renderProjects() {
   renderPortfolio();
 
   const grid = el('projectGrid');
+  const empty = el('projectsEmpty');
 
-  el('projectsEmpty').classList.toggle(
+  empty.classList.toggle(
     'hidden',
-    state.projects.length !== 0
+    state.projects.length !== 0,
   );
 
   grid.classList.toggle(
     'hidden',
-    state.projects.length === 0
+    state.projects.length === 0,
   );
 
   grid.innerHTML = state.projects
@@ -316,7 +326,7 @@ function renderProjects() {
             >
               ${esc(initials(employee.name))}
             </div>
-          `
+          `,
         )
         .join('');
 
@@ -331,44 +341,31 @@ function renderProjects() {
         >
           <div class="project-card-head">
             <div>
-              <h3>
-                ${esc(project.name)}
-              </h3>
+              <h3>${esc(project.name)}</h3>
 
               <div class="desc">
                 ${esc(
-                  project.description ||
-                  'Без описания'
+                  project.description || 'Без описания',
                 )}
               </div>
             </div>
 
-            <span>
-              ›
-            </span>
+            <span>›</span>
           </div>
 
           <div class="project-kpis">
             <div class="project-kpi">
-              <span>
-                Прибыль
-              </span>
-
+              <span>Прибыль</span>
               <strong>
-                ${fmtMoney(
-                  metrics.profit_cents
-                )}
+                ${fmtMoney(metrics.profit_cents)}
               </strong>
             </div>
 
             <div class="project-kpi">
-              <span>
-                Рентабельность
-              </span>
-
+              <span>Рентабельность</span>
               <strong>
                 ${fmtPercent(
-                  metrics.profitability_percent
+                  metrics.profitability_percent,
                 )}
               </strong>
             </div>
@@ -390,7 +387,7 @@ function renderProjects() {
     .forEach((card) => {
       card.addEventListener('click', () => {
         openProject(
-          Number(card.dataset.projectId)
+          Number(card.dataset.projectId),
         );
       });
     });
@@ -399,20 +396,17 @@ function renderProjects() {
 async function openProject(projectId) {
   state.selectedProjectId = projectId;
 
-  const [
-    project,
-    transactions
-  ] = await Promise.all([
-    api(`/api/projects/${projectId}`),
-    api(
-      `/api/projects/${projectId}/transactions`
-    )
-  ]);
+  const [project, transactions] =
+    await Promise.all([
+      api(`/api/projects/${projectId}`),
+      api(
+        `/api/projects/${projectId}/transactions`,
+      ),
+    ]);
 
   renderProjects();
 
   const detail = el('projectDetail');
-
   detail.classList.remove('hidden');
 
   const metrics = project.metrics;
@@ -420,14 +414,10 @@ async function openProject(projectId) {
   detail.innerHTML = `
     <div class="detail-head">
       <div>
-        <h2>
-          ${esc(project.name)}
-        </h2>
-
+        <h2>${esc(project.name)}</h2>
         <p>
           ${esc(
-            project.description ||
-            'Без описания'
+            project.description || 'Без описания',
           )}
         </p>
       </div>
@@ -453,13 +443,13 @@ async function openProject(projectId) {
       ${metricCard(
         'Доходы',
         fmtMoney(metrics.income_cents),
-        'income'
+        'income',
       )}
 
       ${metricCard(
         'Расходы',
         fmtMoney(metrics.expense_cents),
-        'expense'
+        'expense',
       )}
 
       ${metricCard(
@@ -469,24 +459,22 @@ async function openProject(projectId) {
           metrics.profit_cents < 0
             ? 'negative'
             : ''
-        }`
+        }`,
       )}
 
       ${metricCard(
         'Рентабельность',
         fmtPercent(
-          metrics.profitability_percent
+          metrics.profitability_percent,
         ),
-        ''
+        '',
       )}
     </div>
 
     <div class="detail-grid">
       <div class="panel">
         <div class="panel-head">
-          <h3>
-            Операции
-          </h3>
+          <h3>Операции</h3>
 
           <span class="badge">
             ${transactions.length}
@@ -501,7 +489,7 @@ async function openProject(projectId) {
                 <th>Статья</th>
                 <th>Комментарий</th>
                 <th>Сумма</th>
-                <th></th>
+                <th>Действия</th>
               </tr>
             </thead>
 
@@ -514,20 +502,20 @@ async function openProject(projectId) {
                           <tr>
                             <td>
                               ${esc(
-                                transaction.operation_date
+                                transaction.operation_date,
                               )}
                             </td>
 
                             <td>
                               ${esc(
-                                transaction.category_name
+                                transaction.category_name,
                               )}
                             </td>
 
                             <td>
                               ${esc(
                                 transaction.comment ||
-                                '—'
+                                  '—',
                               )}
                             </td>
 
@@ -547,7 +535,7 @@ async function openProject(projectId) {
                               }
 
                               ${fmtMoney(
-                                transaction.amount_cents
+                                transaction.amount_cents,
                               )}
                             </td>
 
@@ -557,13 +545,13 @@ async function openProject(projectId) {
                                 data-delete-transaction="${
                                   transaction.id
                                 }"
-                                title="Удалить"
+                                title="Удалить операцию"
                               >
-                                ×
+                                Удалить
                               </button>
                             </td>
                           </tr>
-                        `
+                        `,
                       )
                       .join('')
                   : `
@@ -584,9 +572,7 @@ async function openProject(projectId) {
 
       <div class="panel">
         <div class="panel-head">
-          <h3>
-            Команда проекта
-          </h3>
+          <h3>Команда проекта</h3>
 
           <button
             class="btn ghost small"
@@ -605,23 +591,19 @@ async function openProject(projectId) {
                       <div class="team-person">
                         <div class="team-avatar">
                           ${esc(
-                            initials(
-                              employee.name
-                            )
+                            initials(employee.name),
                           )}
                         </div>
 
                         <div class="team-meta">
                           <strong>
-                            ${esc(
-                              employee.name
-                            )}
+                            ${esc(employee.name)}
                           </strong>
 
                           <span>
                             ${esc(
                               employee.email ||
-                              'Сотрудник'
+                                'Сотрудник',
                             )}
                           </span>
                         </div>
@@ -636,7 +618,7 @@ async function openProject(projectId) {
                           ×
                         </button>
                       </div>
-                    `
+                    `,
                   )
                   .join('')
               : `
@@ -652,7 +634,7 @@ async function openProject(projectId) {
 
   detail.scrollIntoView({
     behavior: 'smooth',
-    block: 'start'
+    block: 'start',
   });
 
   el('addTransactionBtn').onclick = () => {
@@ -663,44 +645,44 @@ async function openProject(projectId) {
     openEmployeeModal(
       projectId,
       project.employees.map(
-        (employee) => employee.id
-      )
+        (employee) => employee.id,
+      ),
     );
   };
 
   el('deleteProjectBtn').onclick = () => {
     deleteProject(
       projectId,
-      project.name
+      project.name,
     );
   };
 
   detail
     .querySelectorAll(
-      '[data-delete-transaction]'
+      '[data-delete-transaction]',
     )
     .forEach((button) => {
       button.onclick = () => {
         deleteTransaction(
           Number(
-            button.dataset.deleteTransaction
+            button.dataset.deleteTransaction,
           ),
-          projectId
+          projectId,
         );
       };
     });
 
   detail
     .querySelectorAll(
-      '[data-remove-employee]'
+      '[data-remove-employee]',
     )
     .forEach((button) => {
       button.onclick = () => {
         removeEmployee(
           projectId,
           Number(
-            button.dataset.removeEmployee
-          )
+            button.dataset.removeEmployee,
+          ),
         );
       };
     });
@@ -711,13 +693,13 @@ function renderCategories() {
     [
       'income',
       'Доходы',
-      'Статьи поступлений по проектам'
+      'Статьи поступлений по проектам',
     ],
     [
       'expense',
       'Расходы',
-      'Статьи затрат по проектам'
-    ]
+      'Статьи затрат по проектам',
+    ],
   ];
 
   el('categoryColumns').innerHTML =
@@ -726,19 +708,17 @@ function renderCategories() {
         ([
           kind,
           title,
-          subtitle
+          subtitle,
         ]) => {
           const items =
             state.categories.filter(
               (category) =>
-                category.kind === kind
+                category.kind === kind,
             );
 
           return `
             <div class="category-card">
-              <h3>
-                ${title}
-              </h3>
+              <h3>${title}</h3>
 
               <p class="desc">
                 ${subtitle}
@@ -751,7 +731,7 @@ function renderCategories() {
                       <div class="category-row">
                         <span>
                           ${esc(
-                            category.name
+                            category.name,
                           )}
                         </span>
 
@@ -769,19 +749,26 @@ function renderCategories() {
                           }
                         </span>
                       </div>
-                    `
+                    `,
                   )
                   .join('')}
               </div>
             </div>
           `;
-        }
+        },
       )
       .join('');
 }
 
 function fillEmployeeSelects() {
-  const options =
+  const select =
+    el('projectEmployeeSelect');
+
+  if (!select) {
+    return;
+  }
+
+  select.innerHTML =
     state.employees
       .map(
         (employee) => `
@@ -790,17 +777,14 @@ function fillEmployeeSelects() {
             ${
               employee.email
                 ? ` — ${esc(
-                    employee.email
+                    employee.email,
                   )}`
                 : ''
             }
           </option>
-        `
+        `,
       )
       .join('');
-
-  el('projectEmployeeSelect').innerHTML =
-    options;
 }
 
 function openModal(id) {
@@ -811,9 +795,7 @@ function closeModal(id) {
   el(id).classList.add('hidden');
 }
 
-function openTransactionModal(
-  projectId
-) {
+function openTransactionModal(projectId) {
   const form =
     el('transactionForm');
 
@@ -828,14 +810,14 @@ function openTransactionModal(
       ${state.categories
         .filter(
           (category) =>
-            category.kind === 'income'
+            category.kind === 'income',
         )
         .map(
           (category) => `
             <option value="${category.id}">
               ${esc(category.name)}
             </option>
-          `
+          `,
         )
         .join('')}
     </optgroup>
@@ -844,39 +826,38 @@ function openTransactionModal(
       ${state.categories
         .filter(
           (category) =>
-            category.kind === 'expense'
+            category.kind === 'expense',
         )
         .map(
           (category) => `
             <option value="${category.id}">
               ${esc(category.name)}
             </option>
-          `
+          `,
         )
         .join('')}
     </optgroup>
   `;
 
-  openModal(
-    'transactionModal'
-  );
+  openModal('transactionModal');
 }
 
 function openEmployeeModal(
   projectId,
-  assignedIds
+  assignedIds,
 ) {
   const available =
     state.employees.filter(
       (employee) =>
         !assignedIds.includes(
-          employee.id
-        )
+          employee.id,
+        ),
     );
 
-  el(
-    'employeeForm'
-  ).project_id.value =
+  const form =
+    el('employeeForm');
+
+  form.project_id.value =
     projectId;
 
   el('employeeSelect').innerHTML =
@@ -887,7 +868,7 @@ function openEmployeeModal(
               <option value="${employee.id}">
                 ${esc(employee.name)}
               </option>
-            `
+            `,
           )
           .join('')
       : `
@@ -896,336 +877,362 @@ function openEmployeeModal(
         </option>
       `;
 
-  el('employeeForm')
-    .querySelector(
-      'button[type="submit"]'
-    ).disabled =
+  form.querySelector(
+    'button[type="submit"]',
+  ).disabled =
     available.length === 0;
 
-  openModal(
-    'employeeModal'
-  );
+  openModal('employeeModal');
 }
 
 async function deleteTransaction(
-  id,
-  projectId
+  transactionId,
+  projectId,
 ) {
   if (
     !confirm(
-      'Удалить эту операцию?'
+      'Удалить эту операцию?',
     )
   ) {
     return;
   }
 
-  await api(
-    `/api/transactions/${id}`,
-    {
-      method: 'DELETE'
-    }
-  );
+  try {
+    await api(
+      `/api/transactions/${transactionId}`,
+      {
+        method: 'DELETE',
+      },
+    );
 
-  await refreshData();
-  await openProject(projectId);
+    await refreshData();
+    await openProject(projectId);
 
-  toast(
-    'Операция удалена'
-  );
+    toast('Операция удалена');
+  } catch (error) {
+    toast(error.message, true);
+  }
 }
 
 async function removeEmployee(
   projectId,
-  employeeId
+  employeeId,
 ) {
-  await api(
-    `/api/projects/${projectId}/employees/${employeeId}`,
-    {
-      method: 'DELETE'
-    }
-  );
+  try {
+    await api(
+      `/api/projects/${projectId}/employees/${employeeId}`,
+      {
+        method: 'DELETE',
+      },
+    );
 
-  await refreshData();
-  await openProject(projectId);
+    await refreshData();
+    await openProject(projectId);
 
-  toast(
-    'Сотрудник убран из проекта'
-  );
+    toast(
+      'Сотрудник убран из проекта',
+    );
+  } catch (error) {
+    toast(error.message, true);
+  }
 }
 
 async function deleteProject(
   projectId,
-  name
+  name,
 ) {
   if (
     !confirm(
-      `Удалить проект «${name}» вместе со всеми операциями?`
+      `Удалить проект «${name}» вместе со всеми операциями?`,
     )
   ) {
     return;
   }
 
-  await api(
-    `/api/projects/${projectId}`,
-    {
-      method: 'DELETE'
-    }
-  );
+  try {
+    await api(
+      `/api/projects/${projectId}`,
+      {
+        method: 'DELETE',
+      },
+    );
 
-  state.selectedProjectId =
-    null;
+    state.selectedProjectId =
+      null;
 
-  el(
-    'projectDetail'
-  ).classList.add('hidden');
+    el('projectDetail')
+      .classList.add('hidden');
 
-  await refreshData();
+    await refreshData();
 
-  toast(
-    'Проект удалён'
-  );
+    toast('Проект удалён');
+  } catch (error) {
+    toast(error.message, true);
+  }
 }
 
 function bindForms() {
-  el('projectForm')
-    .addEventListener(
-      'submit',
-      async (event) => {
-        event.preventDefault();
+  const projectForm =
+    el('projectForm');
 
-        const form =
-          new FormData(
-            event.currentTarget
-          );
+  const categoryForm =
+    el('categoryForm');
 
-        const employeeIds = [
-          ...el(
-            'projectEmployeeSelect'
-          ).selectedOptions
-        ].map(
-          (option) =>
-            Number(option.value)
+  const transactionForm =
+    el('transactionForm');
+
+  const employeeForm =
+    el('employeeForm');
+
+  projectForm.addEventListener(
+    'submit',
+    async (event) => {
+      event.preventDefault();
+
+      const formElement =
+        event.target;
+
+      const form =
+        new FormData(
+          formElement,
         );
 
-        try {
-          const project =
-            await api(
-              '/api/projects',
-              {
-                method: 'POST',
-                body: JSON.stringify({
-                  name:
-                    form.get('name'),
-                  description:
-                    form.get(
-                      'description'
-                    ),
-                  employee_ids:
-                    employeeIds
-                })
-              }
-            );
+      const employeeIds = [
+        ...el(
+          'projectEmployeeSelect',
+        ).selectedOptions,
+      ].map(
+        (option) =>
+          Number(option.value),
+      );
 
-          event.currentTarget.reset();
-
-          closeModal(
-            'projectModal'
-          );
-
-          await refreshData();
-
-          await openProject(
-            project.id
-          );
-
-          toast(
-            'Проект создан'
-          );
-        } catch (error) {
-          toast(
-            error.message,
-            true
-          );
-        }
-      }
-    );
-
-  el('categoryForm')
-    .addEventListener(
-      'submit',
-      async (event) => {
-        event.preventDefault();
-
-        const form =
-          new FormData(
-            event.currentTarget
-          );
-
-        try {
+      try {
+        const project =
           await api(
-            '/api/categories',
+            '/api/projects',
             {
               method: 'POST',
               body: JSON.stringify({
                 name:
                   form.get('name'),
-                kind:
-                  form.get('kind')
-              })
-            }
-          );
-
-          event.currentTarget.reset();
-
-          closeModal(
-            'categoryModal'
-          );
-
-          await refreshData();
-
-          toast(
-            'Статья добавлена'
-          );
-        } catch (error) {
-          toast(
-            error.message,
-            true
-          );
-        }
-      }
-    );
-
-  el('transactionForm')
-    .addEventListener(
-      'submit',
-      async (event) => {
-        event.preventDefault();
-
-        const form =
-          new FormData(
-            event.currentTarget
-          );
-
-        const projectId =
-          Number(
-            form.get(
-              'project_id'
-            )
-          );
-
-        try {
-          await api(
-            `/api/projects/${projectId}/transactions`,
-            {
-              method: 'POST',
-              body: JSON.stringify({
-                category_id:
-                  Number(
-                    form.get(
-                      'category_id'
-                    )
-                  ),
-                amount:
+                description:
                   form.get(
-                    'amount'
+                    'description',
                   ),
-                operation_date:
+                employee_ids:
+                  employeeIds,
+              }),
+            },
+          );
+
+        formElement.reset();
+
+        closeModal(
+          'projectModal',
+        );
+
+        await refreshData();
+
+        await openProject(
+          project.id,
+        );
+
+        toast(
+          'Проект создан',
+        );
+      } catch (error) {
+        toast(
+          error.message,
+          true,
+        );
+      }
+    },
+  );
+
+  categoryForm.addEventListener(
+    'submit',
+    async (event) => {
+      event.preventDefault();
+
+      const formElement =
+        event.target;
+
+      const form =
+        new FormData(
+          formElement,
+        );
+
+      try {
+        await api(
+          '/api/categories',
+          {
+            method: 'POST',
+            body: JSON.stringify({
+              name:
+                form.get('name'),
+              kind:
+                form.get('kind'),
+            }),
+          },
+        );
+
+        formElement.reset();
+
+        closeModal(
+          'categoryModal',
+        );
+
+        await refreshData();
+
+        toast(
+          'Статья добавлена',
+        );
+      } catch (error) {
+        toast(
+          error.message,
+          true,
+        );
+      }
+    },
+  );
+
+  transactionForm.addEventListener(
+    'submit',
+    async (event) => {
+      event.preventDefault();
+
+      const formElement =
+        event.target;
+
+      const form =
+        new FormData(
+          formElement,
+        );
+
+      const projectId =
+        Number(
+          form.get(
+            'project_id',
+          ),
+        );
+
+      try {
+        await api(
+          `/api/projects/${projectId}/transactions`,
+          {
+            method: 'POST',
+            body: JSON.stringify({
+              category_id:
+                Number(
                   form.get(
-                    'operation_date'
+                    'category_id',
                   ),
-                comment:
+                ),
+              amount:
+                form.get(
+                  'amount',
+                ),
+              operation_date:
+                form.get(
+                  'operation_date',
+                ),
+              comment:
+                form.get(
+                  'comment',
+                ),
+            }),
+          },
+        );
+
+        formElement.reset();
+
+        closeModal(
+          'transactionModal',
+        );
+
+        await refreshData();
+
+        await openProject(
+          projectId,
+        );
+
+        toast(
+          'Операция добавлена',
+        );
+      } catch (error) {
+        toast(
+          error.message,
+          true,
+        );
+      }
+    },
+  );
+
+  employeeForm.addEventListener(
+    'submit',
+    async (event) => {
+      event.preventDefault();
+
+      const formElement =
+        event.target;
+
+      const form =
+        new FormData(
+          formElement,
+        );
+
+      const projectId =
+        Number(
+          form.get(
+            'project_id',
+          ),
+        );
+
+      try {
+        await api(
+          `/api/projects/${projectId}/employees`,
+          {
+            method: 'POST',
+            body: JSON.stringify({
+              employee_id:
+                Number(
                   form.get(
-                    'comment'
-                  )
-              })
-            }
-          );
+                    'employee_id',
+                  ),
+                ),
+            }),
+          },
+        );
 
-          event.currentTarget.reset();
+        formElement.reset();
 
-          closeModal(
-            'transactionModal'
-          );
+        closeModal(
+          'employeeModal',
+        );
 
-          await refreshData();
+        await refreshData();
 
-          await openProject(
-            projectId
-          );
+        await openProject(
+          projectId,
+        );
 
-          toast(
-            'Операция добавлена'
-          );
-        } catch (error) {
-          toast(
-            error.message,
-            true
-          );
-        }
+        toast(
+          'Сотрудник добавлен',
+        );
+      } catch (error) {
+        toast(
+          error.message,
+          true,
+        );
       }
-    );
-
-  el('employeeForm')
-    .addEventListener(
-      'submit',
-      async (event) => {
-        event.preventDefault();
-
-        const form =
-          new FormData(
-            event.currentTarget
-          );
-
-        const projectId =
-          Number(
-            form.get(
-              'project_id'
-            )
-          );
-
-        try {
-          await api(
-            `/api/projects/${projectId}/employees`,
-            {
-              method: 'POST',
-              body: JSON.stringify({
-                employee_id:
-                  Number(
-                    form.get(
-                      'employee_id'
-                    )
-                  )
-              })
-            }
-          );
-
-          closeModal(
-            'employeeModal'
-          );
-
-          await refreshData();
-
-          await openProject(
-            projectId
-          );
-
-          toast(
-            'Сотрудник добавлен'
-          );
-        } catch (error) {
-          toast(
-            error.message,
-            true
-          );
-        }
-      }
-    );
+    },
+  );
 }
 
 function bindNavigation() {
   document
     .querySelectorAll(
-      '.nav-item'
+      '.nav-item',
     )
     .forEach((button) => {
       button.addEventListener(
@@ -1233,16 +1240,18 @@ function bindNavigation() {
         () => {
           document
             .querySelectorAll(
-              '.nav-item'
+              '.nav-item',
             )
-            .forEach((item) => {
-              item.classList.remove(
-                'active'
-              );
-            });
+            .forEach(
+              (item) => {
+                item.classList.remove(
+                  'active',
+                );
+              },
+            );
 
           button.classList.add(
-            'active'
+            'active',
           );
 
           const projects =
@@ -1250,74 +1259,74 @@ function bindNavigation() {
             'projects';
 
           el(
-            'projectsView'
+            'projectsView',
           ).classList.toggle(
             'hidden',
-            !projects
+            !projects,
           );
 
           el(
-            'categoriesView'
+            'categoriesView',
           ).classList.toggle(
             'hidden',
-            projects
+            projects,
           );
 
           el(
-            'newProjectBtn'
+            'newProjectBtn',
           ).classList.toggle(
             'hidden',
-            !projects
+            !projects,
           );
 
           el(
-            'pageTitle'
+            'pageTitle',
           ).textContent =
             projects
               ? 'Экономика проектов'
               : 'Справочник статей';
 
           el(
-            'pageSubtitle'
+            'pageSubtitle',
           ).textContent =
             projects
               ? 'Доходы, расходы и рентабельность в одном месте'
               : 'Управление статьями доходов и расходов';
-        }
+        },
       );
     });
 
   el(
-    'newProjectBtn'
+    'newProjectBtn',
   ).onclick = () => {
     openModal(
-      'projectModal'
+      'projectModal',
     );
   };
 
   el(
-    'newCategoryBtn'
+    'newCategoryBtn',
   ).onclick = () => {
     openModal(
-      'categoryModal'
+      'categoryModal',
     );
   };
 
   document
     .querySelectorAll(
-      '[data-close]'
+      '[data-close]',
     )
     .forEach((button) => {
       button.onclick = () => {
         closeModal(
-          button.dataset.close
+          button.dataset.close,
         );
       };
     });
 
   document
     .querySelectorAll(
-      '.modal-backdrop'
+      '.modal-backdrop',
     )
     .forEach((backdrop) => {
       backdrop.addEventListener(
@@ -1328,21 +1337,21 @@ function bindNavigation() {
             backdrop
           ) {
             closeModal(
-              backdrop.id
+              backdrop.id,
             );
           }
-        }
+        },
       );
     });
 
   document
     .querySelectorAll(
-      '[data-action="open-project-modal"]'
+      '[data-action="open-project-modal"]',
     )
     .forEach((button) => {
       button.onclick = () => {
         openModal(
-          'projectModal'
+          'projectModal',
         );
       };
     });
@@ -1355,10 +1364,14 @@ function bindNavigation() {
   const inBitrix =
     await initBitrix();
 
-  if (!inBitrix) {
-    el(
-      'integrationStatus'
-    ).textContent =
+  const integrationStatus =
+    el('integrationStatus');
+
+  if (
+    !inBitrix &&
+    integrationStatus
+  ) {
+    integrationStatus.textContent =
       'Демо-режим вне Битрикс24';
   }
 
@@ -1371,7 +1384,7 @@ function bindNavigation() {
   } catch (error) {
     toast(
       `Не удалось загрузить данные: ${error.message}`,
-      true
+      true,
     );
   }
 })();
