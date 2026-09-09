@@ -227,7 +227,52 @@ def create_category(payload: CategoryCreate):
             "kind": payload.kind,
             "is_system": 0,
         }
+@app.delete("/api/categories/{category_id}", status_code=204)
+def delete_category(category_id: int):
+    with get_connection() as conn:
+        category = conn.execute(
+            """
+            SELECT id, name, is_system
+            FROM categories
+            WHERE id = ?
+            """,
+            (category_id,),
+        ).fetchone()
 
+        if not category:
+            raise HTTPException(
+                404,
+                "Статья не найдена",
+            )
+
+        if category["is_system"]:
+            raise HTTPException(
+                400,
+                "Системную статью удалить нельзя",
+            )
+
+        used = conn.execute(
+            """
+            SELECT 1
+            FROM transactions
+            WHERE category_id = ?
+            LIMIT 1
+            """,
+            (category_id,),
+        ).fetchone()
+
+        if used:
+            raise HTTPException(
+                409,
+                "Нельзя удалить статью, по которой уже существуют операции",
+            )
+
+        conn.execute(
+            "DELETE FROM categories WHERE id = ?",
+            (category_id,),
+        )
+
+    return Response(status_code=204)
 
 @app.get("/api/employees")
 def list_employees():
